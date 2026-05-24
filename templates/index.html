@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealFlow — Wholesale Deal Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen font-sans">
+
+  <header class="border-b border-gray-800 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex items-center gap-3">
+      <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-black font-bold text-sm">D</div>
+      <span class="text-lg font-semibold tracking-tight">DealFlow</span>
+      <span class="text-gray-500 text-sm">Wholesale Deal Analyzer</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-10">
+
+    <!-- Input form -->
+    <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-8">
+      <h2 class="text-lg font-semibold mb-1">Analyze a Deal</h2>
+      <p class="text-gray-400 text-sm mb-6">Enter the subject property details to pull comps, calculate ARV &amp; MAO, and get a strategy.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm text-gray-400 mb-1.5">Property Address</label>
+          <input id="address" type="text" placeholder="e.g. 123 Main St, Dallas TX 75201"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1.5">Beds</label>
+            <select id="beds" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
+              <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1.5">Asking Price</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+              <input id="asking_price" type="number" placeholder="180,000"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1.5">Est. Repair Costs</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+              <input id="repair_costs" type="number" placeholder="25,000"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
+            </div>
+          </div>
+        </div>
+
+        <button id="analyze-btn" onclick="runAnalysis()"
+          class="w-full bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black font-semibold py-3 rounded-lg transition">
+          Analyze Deal
+        </button>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-box" class="hidden bg-red-900/40 border border-red-700 text-red-300 rounded-xl px-5 py-4 mb-6 text-sm"></div>
+
+    <!-- Results -->
+    <div id="results" class="hidden space-y-6">
+
+      <!-- Key numbers -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
+          <p class="text-gray-400 text-xs uppercase tracking-widest mb-2">ARV</p>
+          <p id="arv" class="text-3xl font-bold"></p>
+          <p class="text-gray-500 text-xs mt-1">After Repair Value</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
+          <p class="text-gray-400 text-xs uppercase tracking-widest mb-2">MAO</p>
+          <p id="mao" class="text-3xl font-bold text-emerald-400"></p>
+          <p class="text-gray-500 text-xs mt-1">Max Allowable Offer</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
+          <p class="text-gray-400 text-xs uppercase tracking-widest mb-2">Spread</p>
+          <p id="spread" class="text-3xl font-bold"></p>
+          <p class="text-gray-500 text-xs mt-1">Equity After Repairs</p>
+        </div>
+      </div>
+
+      <p class="text-center text-xs text-gray-600">MAO = ARV × 70% − Repair Costs &nbsp;|&nbsp; Spread = ARV − Asking Price − Repair Costs</p>
+
+      <!-- Strategy -->
+      <div id="strategy-card" class="border rounded-2xl p-6">
+        <p class="text-xs uppercase tracking-widest mb-2 opacity-50">Recommended Strategy</p>
+        <h3 id="strategy-name" class="text-xl font-bold mb-3"></h3>
+        <p id="strategy-explanation" class="text-sm leading-relaxed opacity-80"></p>
+      </div>
+
+      <!-- Comps table -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold">Comparable Sales</h3>
+          <span id="comp-count" class="text-xs text-gray-500 bg-gray-800 px-2.5 py-1 rounded-full"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
+                <th class="text-left pb-3 font-medium">Address</th>
+                <th class="text-right pb-3 font-medium">Price</th>
+                <th class="text-right pb-3 font-medium">Beds</th>
+                <th class="text-right pb-3 font-medium">Baths</th>
+                <th class="text-right pb-3 font-medium">Sq Ft</th>
+                <th class="text-right pb-3 font-medium">$/Sq Ft</th>
+              </tr>
+            </thead>
+            <tbody id="comps-body" class="divide-y divide-gray-800"></tbody>
+          </table>
+        </div>
+        <p id="no-comps" class="hidden text-center text-gray-500 text-sm py-6">No comparable sales found. Try a city/zip code in the address field.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const fmt = n => n != null ? '$' + Math.abs(Math.round(n)).toLocaleString() : '—';
+
+    const STRATEGY_COLORS = {
+      green:  'bg-emerald-950 border-emerald-800',
+      yellow: 'bg-yellow-950  border-yellow-800',
+      red:    'bg-red-950     border-red-800',
+      gray:   'bg-gray-900    border-gray-800',
+    };
+
+    async function runAnalysis() {
+      const btn = document.getElementById('analyze-btn');
+      const errorBox = document.getElementById('error-box');
+      const results = document.getElementById('results');
+
+      btn.textContent = 'Analyzing…';
+      btn.disabled = true;
+      errorBox.classList.add('hidden');
+      results.classList.add('hidden');
+
+      try {
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address:      document.getElementById('address').value,
+            beds:         document.getElementById('beds').value,
+            asking_price: document.getElementById('asking_price').value || 0,
+            repair_costs: document.getElementById('repair_costs').value || 0,
+          }),
+        });
+
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Request failed');
+
+        // Numbers
+        document.getElementById('arv').textContent = fmt(d.arv);
+        document.getElementById('mao').textContent = fmt(d.mao);
+
+        const spreadEl = document.getElementById('spread');
+        spreadEl.textContent = (d.equity_spread < 0 ? '-' : '') + fmt(d.equity_spread);
+        spreadEl.className = 'text-3xl font-bold ' + (d.equity_spread >= 0 ? 'text-emerald-400' : 'text-red-400');
+
+        // Strategy card
+        const card = document.getElementById('strategy-card');
+        card.className = 'border rounded-2xl p-6 ' + (STRATEGY_COLORS[d.color] || STRATEGY_COLORS.gray);
+        document.getElementById('strategy-name').textContent = d.strategy;
+        document.getElementById('strategy-explanation').textContent = d.explanation;
+
+        // Comps
+        const tbody = document.getElementById('comps-body');
+        tbody.innerHTML = '';
+        document.getElementById('no-comps').classList.toggle('hidden', d.comps.length > 0);
+        document.getElementById('comp-count').textContent = d.comps.length + ' comps';
+
+        d.comps.forEach(c => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-gray-800/40 transition';
+          row.innerHTML = `
+            <td class="py-3 pr-4 text-gray-300 max-w-xs truncate">${c.address || '—'}</td>
+            <td class="py-3 text-right font-medium">${fmt(c.price)}</td>
+            <td class="py-3 text-right text-gray-400">${c.beds ?? '—'}</td>
+            <td class="py-3 text-right text-gray-400">${c.baths ?? '—'}</td>
+            <td class="py-3 text-right text-gray-400">${c.sqft ? Number(c.sqft).toLocaleString() : '—'}</td>
+            <td class="py-3 text-right text-gray-400">${c.price_per_sqft ? fmt(c.price_per_sqft) : '—'}</td>`;
+          tbody.appendChild(row);
+        });
+
+        results.classList.remove('hidden');
+
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('hidden');
+      } finally {
+        btn.textContent = 'Analyze Deal';
+        btn.disabled = false;
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') runAnalysis();
+    });
+  </script>
+
+</body>
+</html>
