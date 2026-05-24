@@ -21,7 +21,7 @@ def fetch_comps(keyword, beds_min, beds_max):
         f"{ZILLOW_BASE}/listing",
         params={
             "keyword": keyword,
-            "type": "recentlySold",
+            "type": "sold",          # "recentlySold" is invalid; "sold" works
             "beds[min]": beds_min,
             "beds[max]": beds_max,
         },
@@ -32,16 +32,32 @@ def fetch_comps(keyword, beds_min, beds_max):
     return resp.json()
 
 
+def _parse_address(item):
+    """Return a flat address string from whichever shape the API returns."""
+    addr = item.get("address")
+    if isinstance(addr, dict):
+        return f"{addr.get('street','')} {addr.get('city','')} {addr.get('state','')} {addr.get('zipcode','')}".strip()
+    if isinstance(addr, str) and addr:
+        return addr
+    return item.get("addressRaw") or item.get("streetAddress") or ""
+
+
 def parse_comps(data):
+    # API returns results under "properties"; fall back to other common keys
     listings = (
-        data.get("searchResults")
+        data.get("properties")
+        or data.get("searchResults")
         or data.get("results")
         or data.get("listings")
         or []
     )
     comps = []
     for item in listings[:20]:
-        raw = item.get("price") or item.get("unformattedPrice")
+        # For sold listings the API gives zestimate (current value) — ideal for ARV.
+        # Fall back to unformatted / formatted price fields for forSale listings.
+        raw = (item.get("zestimate")
+               or item.get("price")
+               or item.get("unformattedPrice"))
         if not raw:
             continue
         try:
@@ -50,10 +66,10 @@ def parse_comps(data):
             continue
         if price < 10_000:
             continue
-        sqft = item.get("livingArea") or item.get("area") or item.get("sqft")
+        sqft = item.get("area") or item.get("livingArea") or item.get("sqft")
         ppsf = round(price / sqft) if sqft and sqft > 0 else None
         comps.append({
-            "address": item.get("address") or item.get("streetAddress") or "",
+            "address": _parse_address(item),
             "price": round(price),
             "beds": item.get("beds") or item.get("bedrooms"),
             "baths": item.get("baths") or item.get("bathrooms"),
