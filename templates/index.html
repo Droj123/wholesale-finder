@@ -4,438 +4,815 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DealFlow — Wholesale Deal Analyzer</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #07070f;
+      --surface:    #0f0f1a;
+      --surface2:   #161626;
+      --border:     rgba(255,255,255,0.07);
+      --border2:    rgba(255,255,255,0.12);
+      --text:       #f0f0ff;
+      --muted:      rgba(255,255,255,0.4);
+      --faint:      rgba(255,255,255,0.15);
+      --green:      #10b981;
+      --green-dim:  rgba(16,185,129,0.15);
+      --green-glow: rgba(16,185,129,0.3);
+      --amber:      #f59e0b;
+      --amber-dim:  rgba(245,158,11,0.12);
+      --blue:       #818cf8;
+      --blue-dim:   rgba(129,140,248,0.12);
+      --red:        #f87171;
+      --red-dim:    rgba(248,113,113,0.12);
+      --radius:     14px;
+      --radius-sm:  9px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .shell { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .main { flex: 1; overflow-x: hidden; }
+
+    /* ── Sidebar components ── */
+    .logo {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+    .logo-mark {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 15px; color: #000;
+      flex-shrink: 0;
+    }
+    .logo-name  { font-weight: 800; font-size: 17px; letter-spacing: -0.5px; }
+    .logo-sub   { font-size: 11px; color: var(--muted); }
+
+    .form-body { padding: 20px 22px; flex: 1; overflow-y: auto; }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 12px;
+      margin-top: 22px;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field { margin-bottom: 11px; }
+
+    .input-wrap { position: relative; }
+    .prefix {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--faint);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 9px 13px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+    }
+    input::placeholder { color: rgba(255,255,255,0.2); }
+    .has-prefix input { padding-left: 26px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .form-footer {
+      padding: 18px 22px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-analyze {
+      width: 100%;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #000;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: -0.2px;
+      padding: 13px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-analyze:hover   { opacity: 0.9; }
+    .btn-analyze:active  { transform: scale(0.99); }
+    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+    .powered {
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255,255,255,0.18);
+      margin-top: 8px;
+    }
+
+    /* ── Main area ── */
+    .error-bar {
+      display: none;
+      background: rgba(239,68,68,0.12);
+      border-bottom: 1px solid rgba(239,68,68,0.3);
+      padding: 13px 32px;
+      font-size: 13px;
+      color: var(--red);
+    }
+
+    /* Empty state */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 60px 40px;
+      text-align: center;
+      gap: 0;
+    }
+    .empty-icon  { font-size: 56px; margin-bottom: 18px; }
+    .empty-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .empty-sub   { font-size: 13px; color: var(--muted); max-width: 320px; line-height: 1.7; margin-bottom: 28px; }
+    .feature-list { display: flex; flex-direction: column; gap: 7px; text-align: left; margin-bottom: 32px; }
+    .feature-list span { font-size: 12px; color: rgba(255,255,255,0.3); }
+    .server-box {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 18px 24px;
+      text-align: left;
+      max-width: 360px;
+    }
+    .server-box h4 { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+    .server-box code { display: block; font-size: 12px; color: var(--green); font-family: 'Courier New', monospace; margin-bottom: 3px; }
+
+    /* Results */
+    .results { display: none; padding: 28px 32px; max-width: 920px; }
+
+    /* Section title */
+    .sec-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 10px;
+    }
+
+    /* Deal banner */
+    .deal-banner {
+      border-radius: var(--radius);
+      border: 1px solid;
+      padding: 22px 26px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .deal-banner.hot         { background: linear-gradient(135deg,rgba(16,185,129,.18),rgba(16,185,129,.06)); border-color: rgba(16,185,129,.4); }
+    .deal-banner.warm        { background: linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.05)); border-color: rgba(245,158,11,.4); }
+    .deal-banner.borderline  { background: linear-gradient(135deg,rgba(129,140,248,.15),rgba(129,140,248,.05)); border-color: rgba(129,140,248,.4); }
+    .deal-banner.pass        { background: linear-gradient(135deg,rgba(248,113,113,.15),rgba(248,113,113,.05)); border-color: rgba(248,113,113,.4); }
+    .banner-label { font-size: 26px; font-weight: 900; letter-spacing: -1px; margin-top: 4px; }
+    .banner-meta  { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 3px; }
+    .banner-val   { font-size: 20px; font-weight: 800; }
+    .banner-stats { display: flex; gap: 28px; text-align: right; }
+
+    /* Card grid */
+    .grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 22px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 8px; }
+    .grid-half { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+
+    /* ARV cards */
+    .arv-cons  { background: var(--amber-dim); border-color: rgba(245,158,11,0.25); }
+    .arv-likely { background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.04)); border-color: rgba(16,185,129,0.35); position: relative; }
+    .arv-agg   { background: var(--blue-dim);  border-color: rgba(129,140,248,0.25); }
+
+    .arv-badge {
+      position: absolute;
+      top: -10px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: #000;
+      font-size: 9px; font-weight: 900;
+      padding: 2px 9px;
+      border-radius: 20px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .card-label { font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+    .card-num   { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .card-sub   { font-size: 10px; color: var(--faint); margin-top: 4px; }
+
+    .arv-cons  .card-label { color: var(--amber); }
+    .arv-likely .card-label { color: var(--green); }
+    .arv-agg   .card-label { color: var(--blue); }
+
+    /* Offer tiers */
+    .tier-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 15px; text-align: center; }
+    .tier-card.tier-mao { background: var(--green-dim); border-color: var(--green-glow); }
+
+    .tier-label { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px; }
+    .tier-card.tier-mao .tier-label { color: var(--green); }
+    .tier-num   { font-size: 19px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .tier-card.tier-safe   .tier-num { color: rgba(255,255,255,0.45); }
+    .tier-card.tier-target .tier-num { color: rgba(255,255,255,0.7);  }
+    .tier-card.tier-max    .tier-num { color: var(--text); }
+    .tier-card.tier-mao    .tier-num { color: var(--green); }
+    .tier-footnote { font-size: 11px; color: rgba(255,255,255,0.22); margin-top: 6px; margin-bottom: 22px; text-align: center; }
+
+    /* Strategy */
+    .strategy-card { border-radius: var(--radius); border: 1px solid; padding: 20px; }
+    .strategy-card.green  { background: rgba(16,185,129,0.09);  border-color: rgba(16,185,129,0.3); }
+    .strategy-card.yellow { background: rgba(245,158,11,0.09);  border-color: rgba(245,158,11,0.3); }
+    .strategy-card.red    { background: rgba(248,113,113,0.09); border-color: rgba(248,113,113,0.3); }
+    .strategy-card.gray   { background: var(--surface);         border-color: var(--border); }
+    .strategy-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+    .strategy-name    { font-size: 17px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px; }
+    .strategy-explain { font-size: 13px; line-height: 1.65; color: var(--muted); }
+
+    /* Risk flags */
+    .risk-header  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .risk-badge   { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .risk-badge.flagged { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .risk-badge.clear   { background: rgba(16,185,129,0.15); color: var(--green); }
+    .risk-item  { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: rgba(245,158,11,0.9); line-height: 1.5; margin-bottom: 6px; }
+    .risk-clear { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: rgba(16,185,129,0.9); }
+
+    /* Data quality / rental tiles */
+    .tile { background: var(--surface2); border-radius: 10px; padding: 14px; text-align: center; }
+    .tile-label { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+    .tile-val   { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .tile-sub   { font-size: 10px; color: var(--faint); margin-top: 4px; }
+    .tile-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tile-grid .span2 { grid-column: span 2; }
+
+    /* Comps table */
+    .comp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .comp-title-row { display: flex; align-items: center; gap: 10px; }
+    .comp-badge { font-size: 11px; color: var(--muted); background: var(--surface2); padding: 3px 10px; border-radius: 20px; }
+    .btn-sm { font-size: 12px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border2); padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+    .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; padding-bottom: 10px; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.28); border-bottom: 1px solid var(--border); }
+    thead th:not(:first-child) { text-align: right; }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+    tbody td { padding: 11px 0; color: var(--muted); max-width: 0; }
+    tbody td:first-child { color: rgba(255,255,255,0.7); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 16px; }
+    tbody td:not(:first-child) { text-align: right; }
+    td.price { font-weight: 700; color: var(--text) !important; }
+
+    /* Question items */
+    .q-item { background: var(--surface2); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.55; margin-bottom: 6px; }
+
+    /* Pitch */
+    .pitch-box { background: var(--surface2); border-radius: 10px; padding: 16px 18px; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.75; }
+    .pitch-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .btn-copy { font-size: 12px; color: var(--text); background: var(--green-dim); border: 1px solid var(--green-glow); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; transition: background 0.2s; }
+    .btn-copy:hover { background: rgba(16,185,129,0.25); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .shell { flex-direction: column; }
+      .sidebar { width: 100%; min-width: unset; height: auto; position: static; }
+      .grid3, .grid4, .grid-half { grid-template-columns: 1fr 1fr; }
+      .empty { min-height: auto; padding: 40px 24px; }
+      .results { padding: 20px; }
+    }
+    @media (max-width: 500px) {
+      .grid3, .grid4, .grid-half { grid-template-columns: 1fr; }
+      .banner-stats { display: none; }
+    }
+  </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen font-sans">
+<body>
+<div class="shell">
 
-  <!-- ── Header ─────────────────────────────────────────────────────────── -->
-  <header class="sticky top-0 z-10 border-b border-gray-800 bg-gray-950/95 px-6 py-4 backdrop-blur">
-    <div class="max-w-5xl mx-auto flex items-center gap-3">
-      <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-black font-bold text-sm">D</div>
-      <span class="text-lg font-semibold tracking-tight">DealFlow</span>
-      <span class="text-gray-500 text-sm hidden sm:inline">Wholesale Deal Analyzer</span>
-    </div>
-  </header>
-
-  <main class="max-w-5xl mx-auto px-4 py-8 space-y-5">
-
-    <!-- ── Input Form ──────────────────────────────────────────────────── -->
-    <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-      <h2 class="text-lg font-semibold mb-1">Analyze a Deal</h2>
-      <p class="text-gray-400 text-sm mb-5">Get three ARV scenarios, four offer tiers, risk flags, seller questions, and a buyer pitch — all from one address.</p>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Property Address</label>
-          <input id="address" type="text" placeholder="123 Main St, Dallas TX 75201"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Beds</label>
-            <select id="beds" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
-              <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Asking Price</label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-              <input id="asking_price" type="number" placeholder="175,000"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Est. Repairs</label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-              <input id="repair_costs" type="number" placeholder="25,000"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">
-              Monthly Rent <span class="normal-case text-gray-600">(optional — enables rental metrics)</span>
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-              <input id="monthly_rent" type="number" placeholder="1,500"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">
-              Wholesale Fee Target <span class="normal-case text-gray-600">(default $15,000)</span>
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-              <input id="wholesale_fee" type="number" placeholder="15,000"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition" />
-            </div>
-          </div>
-        </div>
-
-        <button id="analyze-btn" onclick="runAnalysis()"
-          class="w-full bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black font-semibold py-3 rounded-lg transition">
-          <span id="btn-text">Analyze Deal</span>
-        </button>
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">D</div>
+      <div>
+        <div class="logo-name">DealFlow</div>
+        <div class="logo-sub">Wholesale Deal Analyzer</div>
       </div>
     </div>
 
-    <!-- ── Error ───────────────────────────────────────────────────────── -->
-    <div id="error-box" class="hidden bg-red-950 border border-red-800 text-red-300 rounded-xl px-5 py-4 text-sm"></div>
+    <div class="form-body">
+      <div class="section-label">Property</div>
 
-    <!-- ── Results ─────────────────────────────────────────────────────── -->
-    <div id="results" class="hidden space-y-5">
+      <div class="field">
+        <label>Address</label>
+        <input id="address" type="text" placeholder="123 Main St, Dallas TX 75201" />
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Beds</label>
+          <select id="beds">
+            <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Baths</label>
+          <select id="baths">
+            <option>1</option><option selected>2</option><option>3</option><option>4</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Deal Numbers</div>
+
+      <div class="field">
+        <label>Asking Price</label>
+        <div class="input-wrap has-prefix">
+          <span class="prefix">$</span>
+          <input id="asking_price" type="number" placeholder="175,000" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Est. Repairs</label>
+        <div class="input-wrap has-prefix">
+          <span class="prefix">$</span>
+          <input id="repair_costs" type="number" placeholder="25,000" />
+        </div>
+      </div>
+
+      <div class="section-label">Optional — Unlocks More Metrics</div>
+
+      <div class="field">
+        <label>Monthly Rent <span style="color:var(--faint); font-weight:400;">(rental ratios)</span></label>
+        <div class="input-wrap has-prefix">
+          <span class="prefix">$</span>
+          <input id="monthly_rent" type="number" placeholder="1,500" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Wholesale Fee Target</label>
+        <div class="input-wrap has-prefix">
+          <span class="prefix">$</span>
+          <input id="wholesale_fee" type="number" placeholder="15,000" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <button class="btn-analyze" id="analyze-btn" onclick="runAnalysis()">
+        <span id="btn-text">Analyze Deal</span>
+      </button>
+      <div class="powered">Live comps via Zillow · Hasdata</div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+  <main class="main">
+    <div class="error-bar" id="error-box"></div>
+
+    <!-- Empty state -->
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">🏠</div>
+      <div class="empty-title">Ready to analyze</div>
+      <div class="empty-sub">Fill in the property details on the left and click Analyze Deal to get your full breakdown.</div>
+      <div class="feature-list">
+        <span>✦ 3 ARV scenarios — conservative to aggressive</span>
+        <span>✦ 4 offer tiers tied to your wholesale fee</span>
+        <span>✦ Automated risk flags on every deal</span>
+        <span>✦ Seller questions + ready-to-send buyer pitch</span>
+        <span>✦ Rental ratios + CSV export</span>
+      </div>
+      <div class="server-box">
+        <h4>Running for the first time? Start the server:</h4>
+        <code>cd C:\Users\drfri\wholesale-finder</code>
+        <code>.venv\Scripts\activate</code>
+        <code>python app.py</code>
+        <code style="margin-top:6px; color:var(--muted);"># then open http://localhost:5000</code>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+
+      <!-- Deal banner -->
+      <div class="deal-banner" id="deal-banner">
+        <div>
+          <div class="banner-meta">Deal Quality</div>
+          <div class="banner-label" id="deal-label"></div>
+        </div>
+        <div class="banner-stats">
+          <div>
+            <div class="banner-meta">Equity Spread</div>
+            <div class="banner-val" id="banner-spread"></div>
+          </div>
+          <div>
+            <div class="banner-meta">Comps</div>
+            <div class="banner-val" id="banner-comps"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- ARV Scenarios -->
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-widest mb-2 px-1">
-          ARV Scenarios — <span id="comp-count-label">—</span>
-        </p>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1.5">Conservative</p>
-            <p id="cons-arv" class="text-2xl font-black text-amber-400"></p>
-            <p class="text-xs text-gray-600 mt-1">25th percentile</p>
-          </div>
-          <div class="bg-gray-900 border border-emerald-900 rounded-2xl p-4 text-center ring-1 ring-emerald-900/50">
-            <p class="text-xs text-emerald-400 mb-1.5">Likely ★</p>
-            <p id="likely-arv" class="text-2xl font-black text-white"></p>
-            <p class="text-xs text-gray-600 mt-1">Median</p>
-          </div>
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1.5">Aggressive</p>
-            <p id="agg-arv" class="text-2xl font-black text-blue-400"></p>
-            <p class="text-xs text-gray-600 mt-1">75th percentile</p>
-          </div>
+      <div class="sec-title" id="arv-label">ARV Scenarios</div>
+      <div class="grid3" style="margin-bottom:22px;">
+        <div class="card arv-cons" style="text-align:center;">
+          <div class="card-label">Conservative</div>
+          <div class="card-num" id="cons-arv"></div>
+          <div class="card-sub">25th percentile</div>
+        </div>
+        <div class="card arv-likely" style="text-align:center;">
+          <div class="arv-badge">Use This</div>
+          <div class="card-label">Likely ARV</div>
+          <div class="card-num" id="likely-arv"></div>
+          <div class="card-sub">Median</div>
+        </div>
+        <div class="card arv-agg" style="text-align:center;">
+          <div class="card-label">Aggressive</div>
+          <div class="card-num" id="agg-arv"></div>
+          <div class="card-sub">75th percentile</div>
         </div>
       </div>
 
       <!-- Offer Tiers -->
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-widest mb-2 px-1">Offer Tiers</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1.5">Safe Offer</p>
-            <p id="safe-offer" class="text-xl font-black text-gray-400"></p>
-          </div>
-          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1.5">Target Offer</p>
-            <p id="target-offer" class="text-xl font-black text-gray-200"></p>
-          </div>
-          <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1.5">Max Offer</p>
-            <p id="max-offer" class="text-xl font-black text-white"></p>
-          </div>
-          <div class="bg-emerald-950 border border-emerald-800 rounded-xl p-4 text-center ring-1 ring-emerald-800/40">
-            <p class="text-xs text-emerald-400 mb-1.5">Buyer MAO</p>
-            <p id="buyer-mao" class="text-xl font-black text-emerald-400"></p>
-          </div>
+      <div class="sec-title">Offer Tiers — Enter At or Below</div>
+      <div class="grid4">
+        <div class="tier-card tier-safe">
+          <div class="tier-label">Safe Offer</div>
+          <div class="tier-num" id="safe-offer"></div>
         </div>
-        <p class="text-xs text-gray-600 mt-2 px-1">
-          Buyer MAO = Likely ARV × 70% − Repairs &nbsp;|&nbsp; Your offers = Buyer MAO − Wholesale Fee
-        </p>
+        <div class="tier-card tier-target">
+          <div class="tier-label">Target Offer</div>
+          <div class="tier-num" id="target-offer"></div>
+        </div>
+        <div class="tier-card tier-max">
+          <div class="tier-label">Max Offer</div>
+          <div class="tier-num" id="max-offer"></div>
+        </div>
+        <div class="tier-card tier-mao">
+          <div class="tier-label">Buyer MAO ★</div>
+          <div class="tier-num" id="buyer-mao"></div>
+        </div>
+      </div>
+      <div class="tier-footnote">
+        Buyer MAO = Likely ARV × 70% − Repairs &nbsp;|&nbsp; Your offers = Buyer MAO − Wholesale Fee
       </div>
 
-      <!-- Strategy -->
-      <div id="strategy-card" class="border rounded-2xl p-5">
-        <p class="text-xs uppercase tracking-widest opacity-50 mb-2">Recommended Strategy</p>
-        <h3 id="strategy-name" class="text-xl font-bold mb-2"></h3>
-        <p id="strategy-explanation" class="text-sm leading-relaxed opacity-80"></p>
+      <!-- Strategy + Risk -->
+      <div class="grid-half">
+        <div id="strategy-card" class="strategy-card gray">
+          <div class="strategy-eyebrow">Recommended Strategy</div>
+          <div class="strategy-name" id="strategy-name"></div>
+          <div class="strategy-explain" id="strategy-explain"></div>
+        </div>
+        <div class="card">
+          <div class="risk-header">
+            <div class="card-title" style="margin:0;">Risk Flags</div>
+            <div class="risk-badge" id="risk-badge"></div>
+          </div>
+          <div id="risk-list"></div>
+        </div>
       </div>
 
-      <!-- Risk Flags -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold">Risk Flags</h3>
-          <span id="risk-badge" class="text-xs px-2.5 py-1 rounded-full font-medium"></span>
-        </div>
-        <div id="risk-list" class="space-y-2"></div>
-      </div>
-
-      <!-- Data Quality + Rental (2-col) -->
-      <div class="grid sm:grid-cols-2 gap-4">
-
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h3 class="font-semibold mb-3">Data Quality</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-gray-800 rounded-xl p-3 text-center">
-              <p class="text-xs text-gray-500 mb-1">Eligible Comps</p>
-              <p id="dq-comps" class="text-xl font-black"></p>
+      <!-- Data Quality + Rental -->
+      <div class="grid-half">
+        <div class="card">
+          <div class="card-title">Data Quality</div>
+          <div class="tile-grid">
+            <div class="tile">
+              <div class="tile-label">Comps Found</div>
+              <div class="tile-val" id="dq-comps"></div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-3 text-center">
-              <p class="text-xs text-gray-500 mb-1">Median $/Sqft</p>
-              <p id="dq-ppsf" class="text-xl font-black"></p>
+            <div class="tile">
+              <div class="tile-label">Median $/Sqft</div>
+              <div class="tile-val" id="dq-ppsf"></div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-3 text-center col-span-2">
-              <p class="text-xs text-gray-500 mb-1">All-In Cost % of ARV</p>
-              <p id="dq-allin" class="text-xl font-black"></p>
-              <p class="text-xs text-gray-600 mt-0.5">Under 80% is healthy</p>
+            <div class="tile span2">
+              <div class="tile-label">All-In Cost % of ARV</div>
+              <div class="tile-val" id="dq-allin"></div>
+              <div class="tile-sub">Under 80% = healthy</div>
             </div>
           </div>
         </div>
-
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h3 class="font-semibold mb-3">Rental Snapshot</h3>
-          <div id="rental-empty" class="text-sm text-gray-500 pt-2">
-            Enter a monthly rent estimate above to see rental ratios.
+        <div class="card">
+          <div class="card-title">Rental Snapshot</div>
+          <div id="rental-empty" style="color:var(--faint); font-size:13px; padding: 18px 0; text-align:center; line-height:1.7;">
+            Enter a monthly rent estimate<br/>to unlock rental ratios.
           </div>
-          <div id="rental-data" class="hidden grid grid-cols-2 gap-3">
-            <div class="bg-gray-800 rounded-xl p-3 text-center">
-              <p class="text-xs text-gray-500 mb-1">Rent / ARV</p>
-              <p id="rent-arv" class="text-xl font-black"></p>
-              <p class="text-xs text-gray-600 mt-0.5">1% / mo = ideal</p>
+          <div id="rental-data" style="display:none;" class="tile-grid">
+            <div class="tile">
+              <div class="tile-label">Rent / ARV</div>
+              <div class="tile-val" id="rent-arv"></div>
+              <div class="tile-sub">1%/mo = ideal</div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-3 text-center">
-              <p class="text-xs text-gray-500 mb-1">Rent / Max Offer</p>
-              <p id="rent-mao" class="text-xl font-black"></p>
-              <p class="text-xs text-gray-600 mt-0.5">1% / mo = ideal</p>
+            <div class="tile">
+              <div class="tile-label">Rent / Max Offer</div>
+              <div class="tile-val" id="rent-mao"></div>
+              <div class="tile-sub">1%/mo = ideal</div>
             </div>
           </div>
         </div>
-
       </div>
 
       <!-- Comps Table -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <h3 class="font-semibold">Comparable Sales</h3>
-            <span id="comp-count" class="text-xs text-gray-500 bg-gray-800 px-2.5 py-1 rounded-full"></span>
+      <div class="card" style="margin-bottom:22px;">
+        <div class="comp-header">
+          <div class="comp-title-row">
+            <div class="card-title" style="margin:0;">Comparable Sales</div>
+            <div class="comp-badge" id="comp-count"></div>
           </div>
-          <button onclick="exportCSV()"
-            class="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-3 py-1.5 rounded-lg transition">
-            Export CSV
-          </button>
+          <button class="btn-sm" onclick="exportCSV()">Export CSV</button>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+        <div style="overflow-x:auto;">
+          <table>
             <thead>
-              <tr class="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
-                <th class="text-left pb-3 font-medium">Address</th>
-                <th class="text-right pb-3 font-medium">Price</th>
-                <th class="text-right pb-3 font-medium">Beds</th>
-                <th class="text-right pb-3 font-medium">Baths</th>
-                <th class="text-right pb-3 font-medium">Sq Ft</th>
-                <th class="text-right pb-3 font-medium">$/Sq Ft</th>
+              <tr>
+                <th>Address</th>
+                <th>Price</th>
+                <th>Bd</th>
+                <th>Ba</th>
+                <th>Sqft</th>
+                <th>$/Sqft</th>
               </tr>
             </thead>
-            <tbody id="comps-body" class="divide-y divide-gray-800"></tbody>
+            <tbody id="comps-body"></tbody>
           </table>
         </div>
-        <p id="no-comps" class="hidden text-center text-gray-500 text-sm py-6">
-          No comps found. Try including city/zip in the address field.
-        </p>
-      </div>
-
-      <!-- Seller Questions -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <h3 class="font-semibold mb-3">Seller Questions</h3>
-        <div id="seller-questions" class="space-y-2"></div>
-      </div>
-
-      <!-- Buyer Pitch -->
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold">Buyer Pitch</h3>
-          <button id="copy-pitch-btn" onclick="copyPitch()"
-            class="text-xs text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition">
-            Copy
-          </button>
+        <div id="no-comps" style="display:none; text-align:center; padding:28px; color:var(--faint); font-size:13px;">
+          No comps found. Try adding city/zip to the address.
         </div>
-        <p id="buyer-pitch" class="bg-gray-800 rounded-xl px-4 py-3 text-sm leading-6 text-gray-200"></p>
       </div>
 
-    </div>
+      <!-- Questions + Pitch -->
+      <div class="grid-half">
+        <div class="card">
+          <div class="card-title">Seller Questions</div>
+          <div id="seller-questions"></div>
+        </div>
+        <div class="card">
+          <div class="pitch-header">
+            <div class="card-title" style="margin:0;">Buyer Pitch</div>
+            <button class="btn-copy" id="copy-btn" onclick="copyPitch()">Copy</button>
+          </div>
+          <div class="pitch-box" id="buyer-pitch"></div>
+        </div>
+      </div>
+
+    </div><!-- /results -->
   </main>
+</div>
 
-  <script>
-    const $   = id => document.getElementById(id);
-    const fmt = n  => n != null ? '$' + Math.abs(Math.round(n)).toLocaleString() : '—';
-    const pct = n  => n != null ? n.toFixed(2) + '%' : '—';
+<script>
+  const $   = id => document.getElementById(id);
+  const fmt = n  => n != null ? '$' + Math.abs(Math.round(n)).toLocaleString() : '—';
+  const pct = n  => n != null ? n.toFixed(2) + '%' : '—';
+  let lastData = null;
 
-    let lastAnalysis = null;
+  function dealScore(d) {
+    const spread = (d.buyerMao || 0) - (d.askingPrice || 0);
+    if (spread <= 0)                                           return { cls: 'pass',       label: '❌  Pass' };
+    if (spread > 40000 && d.compCount >= 5 && d.riskFlags.length <= 1)
+                                                               return { cls: 'hot',        label: '🔥  Hot Deal' };
+    if (spread > 25000)                                        return { cls: 'warm',       label: '⚡  Warm Deal' };
+    return                                                            { cls: 'borderline', label: '🔍  Borderline' };
+  }
 
-    const STRAT = {
-      green:  'bg-emerald-950 border-emerald-800',
-      yellow: 'bg-yellow-950  border-yellow-800',
-      red:    'bg-red-950     border-red-800',
-      gray:   'bg-gray-900    border-gray-800',
-    };
+  async function runAnalysis() {
+    const btn    = $('analyze-btn');
+    const btnTxt = $('btn-text');
+    $('error-box').style.display  = 'none';
+    $('results').style.display    = 'none';
+    $('empty-state').style.display = 'none';
+    btnTxt.textContent = 'Analyzing…';
+    btn.disabled = true;
 
-    async function runAnalysis() {
-      const btn    = $('analyze-btn');
-      const btnTxt = $('btn-text');
-      $('error-box').classList.add('hidden');
-      $('results').classList.add('hidden');
-      btnTxt.textContent = 'Analyzing…';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/analyze', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address:       $('address').value,
-            beds:          $('beds').value,
-            asking_price:  $('asking_price').value  || 0,
-            repair_costs:  $('repair_costs').value  || 0,
-            monthly_rent:  $('monthly_rent').value  || 0,
-            wholesale_fee: $('wholesale_fee').value || 15000,
-          }),
-        });
-
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error || 'Request failed');
-        lastAnalysis = d;
-
-        // ARV Scenarios
-        $('comp-count-label').textContent = d.compCount + (d.compCount === 1 ? ' comp' : ' comps');
-        $('cons-arv').textContent   = fmt(d.conservativeArv);
-        $('likely-arv').textContent = fmt(d.likelyArv);
-        $('agg-arv').textContent    = fmt(d.aggressiveArv);
-
-        // Offer Tiers
-        $('safe-offer').textContent   = fmt(d.safeOffer);
-        $('target-offer').textContent = fmt(d.targetOffer);
-        $('max-offer').textContent    = fmt(d.maxOffer);
-        $('buyer-mao').textContent    = fmt(d.buyerMao);
-
-        // Strategy
-        const card = $('strategy-card');
-        card.className = 'border rounded-2xl p-5 ' + (STRAT[d.color] || STRAT.gray);
-        $('strategy-name').textContent        = d.strategy;
-        $('strategy-explanation').textContent = d.explanation;
-
-        // Risk Flags
-        const riskList  = $('risk-list');
-        const riskBadge = $('risk-badge');
-        riskList.innerHTML = '';
-        if (d.riskFlags.length) {
-          riskBadge.textContent = d.riskFlags.length + ' flag' + (d.riskFlags.length > 1 ? 's' : '');
-          riskBadge.className   = 'text-xs px-2.5 py-1 rounded-full font-medium bg-amber-900/60 text-amber-300';
-          d.riskFlags.forEach(f => {
-            riskList.innerHTML +=
-              `<div class="bg-amber-950/50 border border-amber-900/50 rounded-lg px-4 py-2.5 text-sm text-amber-200">${f}</div>`;
-          });
-        } else {
-          riskBadge.textContent = 'Clear';
-          riskBadge.className   = 'text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-900/60 text-emerald-300';
-          riskList.innerHTML    =
-            `<div class="bg-emerald-950/50 border border-emerald-900/50 rounded-lg px-4 py-2.5 text-sm text-emerald-300">No major risk flags detected.</div>`;
-        }
-
-        // Data Quality
-        $('dq-comps').textContent = d.compCount;
-        $('dq-ppsf').textContent  = d.medianPpsf ? '$' + d.medianPpsf.toLocaleString() : '—';
-        $('dq-allin').textContent = d.allInCap   ? d.allInCap + '%' : '—';
-
-        // Rental
-        if (d.rentToArv) {
-          $('rental-empty').classList.add('hidden');
-          $('rental-data').classList.remove('hidden');
-          $('rent-arv').textContent = pct(d.rentToArv);
-          $('rent-mao').textContent = pct(d.rentToMao);
-        } else {
-          $('rental-empty').classList.remove('hidden');
-          $('rental-data').classList.add('hidden');
-        }
-
-        // Comps Table
-        const tbody = $('comps-body');
-        tbody.innerHTML = '';
-        $('no-comps').classList.toggle('hidden', d.comps.length > 0);
-        $('comp-count').textContent = d.comps.length + ' comps';
-        d.comps.forEach(c => {
-          const row = document.createElement('tr');
-          row.className = 'hover:bg-gray-800/40 transition';
-          row.innerHTML = `
-            <td class="py-3 pr-4 text-gray-300 max-w-xs truncate">${c.address || '—'}</td>
-            <td class="py-3 text-right font-semibold">${fmt(c.price)}</td>
-            <td class="py-3 text-right text-gray-400">${c.beds  ?? '—'}</td>
-            <td class="py-3 text-right text-gray-400">${c.baths ?? '—'}</td>
-            <td class="py-3 text-right text-gray-400">${c.sqft  ? Number(c.sqft).toLocaleString() : '—'}</td>
-            <td class="py-3 text-right text-gray-400">${c.price_per_sqft ? '$' + c.price_per_sqft.toLocaleString() : '—'}</td>`;
-          tbody.appendChild(row);
-        });
-
-        // Seller Questions
-        const ql = $('seller-questions');
-        ql.innerHTML = '';
-        d.sellerQuestions.forEach(q => {
-          ql.innerHTML += `<div class="bg-gray-800 rounded-lg px-4 py-2.5 text-sm text-gray-300">${q}</div>`;
-        });
-
-        // Buyer Pitch
-        $('buyer-pitch').textContent = d.buyerPitch;
-
-        $('results').classList.remove('hidden');
-
-      } catch (err) {
-        $('error-box').textContent = err.message;
-        $('error-box').classList.remove('hidden');
-      } finally {
-        btnTxt.textContent = 'Analyze Deal';
-        btn.disabled = false;
-      }
-    }
-
-    function copyPitch() {
-      navigator.clipboard.writeText($('buyer-pitch').textContent).then(() => {
-        const btn = $('copy-pitch-btn');
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    try {
+      const res = await fetch('/analyze', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address:       $('address').value,
+          beds:          $('beds').value,
+          baths:         $('baths').value,
+          asking_price:  $('asking_price').value  || 0,
+          repair_costs:  $('repair_costs').value  || 0,
+          monthly_rent:  $('monthly_rent').value  || 0,
+          wholesale_fee: $('wholesale_fee').value || 15000,
+        }),
       });
+
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Request failed');
+      lastData = d;
+
+      // Deal banner
+      const score  = dealScore(d);
+      const banner = $('deal-banner');
+      banner.className   = 'deal-banner ' + score.cls;
+      $('deal-label').textContent   = score.label;
+      $('banner-spread').textContent = fmt((d.buyerMao || 0) - (d.askingPrice || 0));
+      $('banner-comps').textContent  = d.compCount;
+
+      // ARV
+      $('arv-label').textContent  = `ARV Scenarios — ${d.compCount} comp${d.compCount !== 1 ? 's' : ''}`;
+      $('cons-arv').textContent   = fmt(d.conservativeArv);
+      $('likely-arv').textContent = fmt(d.likelyArv);
+      $('agg-arv').textContent    = fmt(d.aggressiveArv);
+
+      // Offer tiers
+      $('safe-offer').textContent   = fmt(d.safeOffer);
+      $('target-offer').textContent = fmt(d.targetOffer);
+      $('max-offer').textContent    = fmt(d.maxOffer);
+      $('buyer-mao').textContent    = fmt(d.buyerMao);
+
+      // Strategy
+      const sc = $('strategy-card');
+      sc.className = 'strategy-card ' + (d.color || 'gray');
+      $('strategy-name').textContent    = d.strategy;
+      $('strategy-explain').textContent = d.explanation;
+
+      // Risk flags
+      const rl = $('risk-list');
+      const rb = $('risk-badge');
+      rl.innerHTML = '';
+      if (d.riskFlags.length) {
+        rb.textContent = d.riskFlags.length + ' flag' + (d.riskFlags.length > 1 ? 's' : '');
+        rb.className   = 'risk-badge flagged';
+        d.riskFlags.forEach(f => {
+          const div = document.createElement('div');
+          div.className   = 'risk-item';
+          div.textContent = f;
+          rl.appendChild(div);
+        });
+      } else {
+        rb.textContent = '✓ Clear';
+        rb.className   = 'risk-badge clear';
+        const div = document.createElement('div');
+        div.className   = 'risk-clear';
+        div.textContent = 'No major risk flags detected.';
+        rl.appendChild(div);
+      }
+
+      // Data quality
+      $('dq-comps').textContent = d.compCount;
+      $('dq-ppsf').textContent  = d.medianPpsf ? '$' + d.medianPpsf.toLocaleString() : '—';
+      $('dq-allin').textContent = d.allInCap   ? d.allInCap + '%' : '—';
+
+      // Rental
+      if (d.rentToArv) {
+        $('rental-empty').style.display = 'none';
+        const rd = $('rental-data');
+        rd.style.display = 'grid';
+        $('rent-arv').textContent = pct(d.rentToArv);
+        $('rent-mao').textContent = pct(d.rentToMao);
+      } else {
+        $('rental-empty').style.display = 'block';
+        $('rental-data').style.display  = 'none';
+      }
+
+      // Comps
+      const tbody = $('comps-body');
+      tbody.innerHTML = '';
+      $('no-comps').style.display  = d.comps.length ? 'none' : 'block';
+      $('comp-count').textContent  = d.comps.length + ' comps';
+      d.comps.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td title="${c.address || ''}">${c.address || '—'}</td>
+          <td class="price">${fmt(c.price)}</td>
+          <td>${c.beds  ?? '—'}</td>
+          <td>${c.baths ?? '—'}</td>
+          <td>${c.sqft  ? Number(c.sqft).toLocaleString() : '—'}</td>
+          <td>${c.price_per_sqft ? '$' + c.price_per_sqft.toLocaleString() : '—'}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      // Seller questions
+      const ql = $('seller-questions');
+      ql.innerHTML = '';
+      d.sellerQuestions.forEach(q => {
+        const div = document.createElement('div');
+        div.className   = 'q-item';
+        div.textContent = q;
+        ql.appendChild(div);
+      });
+
+      // Buyer pitch
+      $('buyer-pitch').textContent = d.buyerPitch;
+
+      $('results').style.display = 'block';
+
+    } catch (err) {
+      $('error-box').textContent    = '⚠ ' + err.message;
+      $('error-box').style.display  = 'block';
+      $('empty-state').style.display = 'flex';
+    } finally {
+      btnTxt.textContent = 'Analyze Deal';
+      btn.disabled = false;
     }
+  }
 
-    function exportCSV() {
-      if (!lastAnalysis) return;
-      const d   = lastAnalysis;
-      const addr = $('address').value;
-
-      const rows = [
-        ['DealFlow Analysis', addr, new Date().toLocaleDateString()],
-        [],
-        ['ARV Scenarios'],
-        ['Conservative ARV', d.conservativeArv],
-        ['Likely ARV',       d.likelyArv],
-        ['Aggressive ARV',   d.aggressiveArv],
-        [],
-        ['Offer Tiers'],
-        ['Buyer MAO',    d.buyerMao],
-        ['Max Offer',    d.maxOffer],
-        ['Target Offer', d.targetOffer],
-        ['Safe Offer',   d.safeOffer],
-        [],
-        ['Data Quality'],
-        ['Comp Count',    d.compCount],
-        ['Median $/Sqft', d.medianPpsf ?? ''],
-        ['All-In Cap %',  d.allInCap   ?? ''],
-        [],
-        ['Comparable Sales'],
-        ['Address', 'Price', 'Beds', 'Baths', 'Sqft', '$/Sqft'],
-        ...d.comps.map(c => [c.address, c.price, c.beds ?? '', c.baths ?? '', c.sqft ?? '', c.price_per_sqft ?? '']),
-      ];
-
-      const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `dealflow-${addr.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'analysis'}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') runAnalysis();
+  function copyPitch() {
+    navigator.clipboard.writeText($('buyer-pitch').textContent).then(() => {
+      const btn = $('copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
     });
-  </script>
+  }
 
+  function exportCSV() {
+    if (!lastData) return;
+    const d    = lastData;
+    const addr = $('address').value;
+    const rows = [
+      ['DealFlow Analysis', addr, new Date().toLocaleDateString()],
+      [],
+      ['ARV Scenarios'],
+      ['Conservative', d.conservativeArv], ['Likely', d.likelyArv], ['Aggressive', d.aggressiveArv],
+      [],
+      ['Offer Tiers'],
+      ['Buyer MAO', d.buyerMao], ['Max Offer', d.maxOffer], ['Target', d.targetOffer], ['Safe', d.safeOffer],
+      [],
+      ['Data Quality'],
+      ['Comps', d.compCount], ['Median $/Sqft', d.medianPpsf ?? ''], ['All-In %', d.allInCap ?? ''],
+      [],
+      ['Comparable Sales'],
+      ['Address','Price','Beds','Baths','Sqft','$/Sqft'],
+      ...d.comps.map(c => [c.address, c.price, c.beds ?? '', c.baths ?? '', c.sqft ?? '', c.price_per_sqft ?? '']),
+    ];
+    const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+      href: url,
+      download: `dealflow-${addr.replace(/[^a-z0-9]/gi,'-').toLowerCase() || 'analysis'}.csv`
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') runAnalysis();
+  });
+</script>
 </body>
 </html>
