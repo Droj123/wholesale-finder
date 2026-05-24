@@ -96,6 +96,14 @@
         <p id="strategy-explanation" class="text-sm leading-relaxed opacity-80"></p>
       </div>
 
+      <!-- Copy button -->
+      <div class="flex justify-end">
+        <button id="copy-btn" onclick="copyReport()"
+          class="text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg transition">
+          Copy Report
+        </button>
+      </div>
+
       <!-- Comps table -->
       <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
         <div class="flex items-center justify-between mb-4">
@@ -200,6 +208,42 @@
         btn.textContent = 'Analyze Deal';
         btn.disabled = false;
       }
+    }
+
+    function copyReport() {
+      const address = document.getElementById('address').value || 'Unknown address';
+      const arv     = document.getElementById('arv').textContent;
+      const mao     = document.getElementById('mao').textContent;
+      const spread  = document.getElementById('spread').textContent;
+      const strategy    = document.getElementById('strategy-name').textContent;
+      const explanation = document.getElementById('strategy-explanation').textContent;
+
+      const rows = [...document.querySelectorAll('#comps-body tr')].map(tr => {
+        const cells = [...tr.querySelectorAll('td')].map(td => td.textContent.trim());
+        return cells.join('\t');
+      });
+
+      const report = [
+        `DealFlow Analysis — ${address}`,
+        `Generated: ${new Date().toLocaleDateString()}`,
+        '',
+        `ARV:    ${arv}`,
+        `MAO:    ${mao}`,
+        `Spread: ${spread}`,
+        '',
+        `Strategy: ${strategy}`,
+        explanation,
+        '',
+        rows.length ? 'Comparable Sales:' : '',
+        rows.length ? 'Address\tPrice\tBeds\tBaths\tSq Ft\t$/Sq Ft' : '',
+        ...rows,
+      ].join('\n');
+
+      navigator.clipboard.writeText(report).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Report'; }, 2000);
+      });
     }
 
     document.addEventListener('keydown', e => {
